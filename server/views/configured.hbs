@@ -94,12 +94,20 @@
       <span class="mcp-client-name">ChatGPT</span>
       <span class="mcp-client-path">OpenAI/ChatGPT/config.json</span>
     </button>
+
+    {{!-- Diferente dos outros: o DeepSeek Harness não lê JSON de cliente. O clique
+          gera um bundle Cordis e devolve o comando `dsh plugin add`. --}}
+    <button type="button" class="mcp-client-tile mcp-config-btn" data-client="deepseek-harness">
+      <img src="/img/clients/deepseek.svg" alt="" class="mcp-client-icon" width="40" height="40" />
+      <span class="mcp-client-name">DeepSeek Harness</span>
+      <span class="mcp-client-path">cordis.patch.yml</span>
+    </button>
   </div>
 
   <div id="mcp-config-status" class="mcp-config-status" hidden role="status"></div>
 
   <details class="mcp-snippet mcp-snippet-manual">
-    <summary>Ver JSON manual</summary>
+    <summary>Ver configuração manual</summary>
     <div class="mcp-snippet-grid">
       <div>
         <h4>Cursor</h4>
@@ -116,6 +124,10 @@
       <div>
         <h4>ChatGPT</h4>
         <pre class="code-block"><code>{{snippets.chatgpt}}</code></pre>
+      </div>
+      <div>
+        <h4>DeepSeek Harness (cordis.patch.yml)</h4>
+        <pre class="code-block"><code>{{snippets.deepseekHarness}}</code></pre>
       </div>
     </div>
   </details>

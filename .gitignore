@@ -23,6 +23,16 @@ graphify-out/
 
 
 
+# memória local do DSH neste workspace (memory.db não se recupera se apagado)
+.dsh-meow/
+# cache do npm mantido dentro do workspace (o sandbox bloqueia escrita em %LOCALAPPDATA%)
+.npm-cache/
+# artefatos de diagnóstico/teste locais
+.tmp-*/
+browser-screenshots/
+# bundle do DeepSeek Harness gerado pela tela /setup/mcp/deepseek-harness
+server/data/dsh-wtai-mcp/
+
 # desktop
 desktop/node_modules/
 desktop/dist/

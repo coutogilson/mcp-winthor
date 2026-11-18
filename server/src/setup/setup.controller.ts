@@ -175,6 +175,11 @@ export class SetupController {
     return this.handleMcpConfigure(res, 'chatgpt');
   }
 
+  @Post('setup/mcp/deepseek-harness')
+  configureMcpDeepSeekHarness(@Res() res: Response) {
+    return this.handleMcpConfigure(res, 'deepseek-harness');
+  }
+
   private handleMcpConfigure(res: Response, client: McpClientId) {
     if (!this.configService.isConfigured()) {
       return res.status(503).json({
@@ -210,6 +215,7 @@ export class SetupController {
         ),
         claudeCode: this.mcpClientConfig.getSnippet('claude-code', mcpUrl),
         chatgpt: this.mcpClientConfig.getSnippet('chatgpt', mcpUrl),
+        deepseekHarness: this.mcpClientConfig.getDshBundlePatch(mcpUrl),
       },
       error: null,
       success: null,

@@ -23,6 +23,8 @@ export class VendasFatoDbService implements OnModuleInit, OnModuleDestroy {
   private instance?: DuckDBInstance;
   private conn?: FatoConn;
   private ready?: Promise<void>;
+  /** `abrir()` em curso: a migração v1→v2 reentra em `pronto()` de dentro dele. */
+  private abrindo = false;
 
   constructor(private readonly metaService: VendasMetaDbService) {}
 
@@ -36,7 +38,19 @@ export class VendasFatoDbService implements OnModuleInit, OnModuleDestroy {
 
   private async inicializar(): Promise<void> {
     if (this.conn) return;
-    if (!this.ready) this.ready = this.abrir();
+    if (this.abrindo) {
+      // Reentrância da migração v1→v2 (`abrir` → `migrarSeNecessario` → `pronto`):
+      // esperar `this.ready` aqui seria esperar a própria promessa em curso e travar
+      // o processo. A migração quer exatamente isto: a conexão aberta para gravar.
+      await this.abrirConexao();
+      return;
+    }
+    if (!this.ready) {
+      this.abrindo = true;
+      this.ready = this.abrir().finally(() => {
+        this.abrindo = false;
+      });
+    }
     await this.ready;
   }
 
@@ -50,9 +64,11 @@ export class VendasFatoDbService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const { instance, conn } = await abrirDuckDB(this.caminho);
-    this.instance = instance;
-    this.conn = conn;
+    // A migração abre a conexão por dentro; reabrir o mesmo arquivo aqui falha com
+    // "arquivo já está sendo usado por outro processo" (DuckDB aceita um único escritor).
+    if (!this.conn) {
+      await this.abrirConexao();
+    }
 
     const versao = (await this.lerVersao()) ?? 0;
     if (versao > FATO_SCHEMA_VERSION) {
@@ -63,9 +79,7 @@ export class VendasFatoDbService implements OnModuleInit, OnModuleDestroy {
         `fato na versão ${versao} (esta build entende ${FATO_SCHEMA_VERSION}); ` +
           `arquivado em ${arquivado} e recriado vazio.`,
       );
-      const reaberto = await abrirDuckDB(this.caminho);
-      this.instance = reaberto.instance;
-      this.conn = reaberto.conn;
+      const reaberto = await this.abrirConexao();
       await this.criarDoZero();
       return;
     }
@@ -78,6 +92,17 @@ export class VendasFatoDbService implements OnModuleInit, OnModuleDestroy {
   async conexao(): Promise<FatoConn> {
     await this.inicializar();
     return this.conn!;
+  }
+
+  /** Abre o arquivo DuckDB e guarda instância + conexão. Não valida esquema. */
+  private async abrirConexao(): Promise<{
+    instance: DuckDBInstance;
+    conn: FatoConn;
+  }> {
+    const aberto = await abrirDuckDB(this.caminho);
+    this.instance = aberto.instance;
+    this.conn = aberto.conn;
+    return aberto;
   }
 
   caminhoArquivo(): string {

@@ -1,22 +1,26 @@
-import { existsSync, unlinkSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WtConfigService } from './wt-config.service';
 
 describe('WtConfigService', () => {
-  const configPath = join(process.cwd(), 'data', 'config.json');
+  let dir: string;
   let service: WtConfigService;
+  const dataDirOriginal = process.env.WTA_DATA_DIR;
 
   beforeEach(() => {
-    if (existsSync(configPath)) {
-      unlinkSync(configPath);
-    }
+    // O data dir precisa ser temporário: este spec apagava
+    // `server/data/config.json`, que é a configuração REAL de quem está usando
+    // o app — rodar os testes durante o uso derrubava o login salvo.
+    dir = mkdtempSync(join(tmpdir(), 'wtai-config-'));
+    process.env.WTA_DATA_DIR = dir;
     service = new WtConfigService();
   });
 
   afterEach(() => {
-    if (existsSync(configPath)) {
-      unlinkSync(configPath);
-    }
+    rmSync(dir, { recursive: true, force: true });
+    if (dataDirOriginal === undefined) delete process.env.WTA_DATA_DIR;
+    else process.env.WTA_DATA_DIR = dataDirOriginal;
   });
 
   it('hashes password with WTA MD5 uppercase rule', () => {

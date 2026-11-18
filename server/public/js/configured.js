@@ -8,6 +8,7 @@
       'claude-desktop': 'Claude Desktop',
       'claude-code': 'Claude Code',
       chatgpt: 'ChatGPT',
+      'deepseek-harness': 'DeepSeek Harness',
     };
 
     buttons.forEach((button) => {

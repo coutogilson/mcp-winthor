@@ -22,10 +22,14 @@ describe('McpClientConfigService', () => {
     service = new McpClientConfigService();
     rmSync(tmpHome, { recursive: true, force: true });
     mkdirSync(tmpHome, { recursive: true });
+    // O bundle do DeepSeek Harness vai para o data dir: sem isto o teste escreveria
+    // em server/data e sobraria sujeira fora do tmpHome.
+    process.env.WTA_DATA_DIR = tmpHome;
   });
 
   afterEach(() => {
     rmSync(tmpHome, { recursive: true, force: true });
+    delete process.env.WTA_DATA_DIR;
   });
 
   it('merges wt.ai into existing mcpServers without removing others', () => {
@@ -93,4 +97,42 @@ describe('McpClientConfigService', () => {
       Object.defineProperty(process, 'platform', { value: originalPlatform });
     }
   });
+
+  // O DeepSeek Harness não tem arquivo de cliente: a configuração é um bundle
+  // Cordis instalado no profile. O serviço gera o bundle e devolve o comando.
+  it('generates a DeepSeek Harness bundle with the cordis patch', () => {
+    const result = service.configure('deepseek-harness', mcpUrl);
+
+    expect(result.ok).toBe(true);
+    const bundleDir = join(tmpHome, 'dsh-wtai-mcp');
+    expect(result.configPath).toBe(bundleDir);
+    expect(result.restartHint).toContain('dsh plugin');
+
+    const patch = readFileSync(join(bundleDir, 'cordis.patch.yml'), 'utf-8');
+    expect(patch).toContain("name: '@deepseek-ai/dsh-mcp-client'");
+    expect(patch).toContain('serverName: wtai');
+    expect(patch).toContain('transport: streamable-http');
+    expect(patch).toContain(`url: ${mcpUrl}`);
+    expect(patch).toContain('failOnStartupError: false');
+
+    const manifest = JSON.parse(
+      readFileSync(join(bundleDir, 'package.json'), 'utf-8'),
+    );
+    expect(manifest.dsh.bundle.patch).toBe('./cordis.patch.yml');
+    expect(manifest.files).toContain('cordis.patch.yml');
+  });
+
+  it('regenerates the bundle when the MCP url changes', () => {
+    service.configure('deepseek-harness', mcpUrl);
+    const novo = 'http://127.0.0.1:9999/mcp';
+    service.configure('deepseek-harness', novo);
+
+    const patch = readFileSync(
+      join(tmpHome, 'dsh-wtai-mcp', 'cordis.patch.yml'),
+      'utf-8',
+    );
+    expect(patch).toContain(`url: ${novo}`);
+    expect(patch).not.toContain(`url: ${mcpUrl}`);
+  });
 });
+
